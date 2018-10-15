@@ -12,6 +12,8 @@ from L6470_pkg.L6470_lib import L6470
 # JSON tool
 import json
 
+import sys
+
 # Callback used to translate the received JSON message to a stepper command.
 # Expecting something like this (example for the run command):
 # {
@@ -95,9 +97,11 @@ def stopCommand(type):
 
 # Main node function.
 if __name__ == '__main__':
+    spiDevice = int(sys.argv[1])
+
     # Open SPI controller.
     _controller = L6470()
-    _controller.open(0, 0)
+    _controller.open(0, spiDevice)
 
     # Init motor/drive.
     _controller.status() # Must be done if the drive was in overcurrent alarm.
