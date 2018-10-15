@@ -59,7 +59,7 @@ def runCommand(direction, speed):
     # Run the stepper if the direction is appropriate.
     if (direction == "clockwise"):
         _controller.run(L6470.DIR_CLOCKWISE, speed)
-    elif (run.direction == "counter-clockwise"):
+    elif (direction == "counter-clockwise"):
         _controller.run(L6470.DIR_COUNTER_CLOCKWISE, speed)
 
 # Move the stepper by the given number of microsteps.
