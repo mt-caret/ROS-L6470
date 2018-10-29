@@ -4,33 +4,33 @@ import spidev
 
 class L6470(object):
     # ==============================================================================================
-    # Useful calculation constants 
+    # Useful calculation constants
     # ==============================================================================================
     # Stepping specs
     ROTATION_STEPS = 200
     TICK = 250 * 10 ** -9
     SCALE = 2 ** -18
-    
+
     # Ratio value used to convert an acceleration from step/s^2 to step/tick^2.
     # step/tick^2 = STEP_ACC_RATIO * step/s^2
     STEP_ACC_RATIO = 0.068719
-    
+
     # Ratio value used to convert a speed from step/s to step/tick.
     # step/tick = STEP_SPEED_RATIO * step/s
     STEP_SPEED_RATIO = 67.108864
-    
+
     # Ratio value used to convert a max or min speed from step/s to step/tick.
     # step/tick = MAXMIN_STEP_SPEED_RATIO * step/s
     MAXMIN_STEP_SPEED_RATIO = 0.065536
-    
+
     # Stepper directions
     DIR_CLOCKWISE = 0x01
     DIR_COUNTER_CLOCKWISE = 0x00
-    
+
     # Register actions performed on a GoUntil or a ReleaseSW.
     ACT_RESET = 0x00
     ACT_COPY = 0x01
-    
+
     # ==============================================================================================
     # Stepper commands
     # The parameters that appear in the Cmd byte must be added to these base command values.
@@ -54,7 +54,7 @@ class L6470(object):
     CMD_SOFTHIZ = 0xA0
     CMD_HARDHIZ = 0xA8
     CMD_GETSTATUS = 0xD0
-    
+
     # ==============================================================================================
     # Stepper registers
     # ==============================================================================================
@@ -82,18 +82,18 @@ class L6470(object):
     REG_ALARM_EN = 0x17
     REG_CONFIG = 0x18
     REG_STATUS	 = 0x19
-    
+
     # ==============================================================================================
     # Step mode values
     # ==============================================================================================
-    # The SYNC_EN field enables (or disables) a clock signal on the BUSY/SYNC pin at the 
+    # The SYNC_EN field enables (or disables) a clock signal on the BUSY/SYNC pin at the
     # frequency defined by the SYNC_SEL field.
     STEP_MODE_SYNC_EN_MASK = 0x80
     STEP_MODE_SYNC_EN 	 = 0x80
-    
+
     # STEP_SEL values mask.
     STEP_MODE_SYNC_SEL_MASK = 0x70
-    
+
     # Possible values for the SYNC_SEL field of the STEP_MODE register.
     # The numbers represent a multiplicand for the FS frequency (ex.: 8 * FS).
     SYNC_SEL_HALF = 0x00
@@ -104,10 +104,10 @@ class L6470(object):
     SYNC_SEL_16 = 0x05
     SYNC_SEL_32 = 0x06
     SYNC_SEL_64 = 0x07
-    
+
     # Mask for the bits of the STEP_SEL field in the STEP_MODE register.
     STEP_MODE_STEP_SEL_MASK = 0x07
-    
+
     # Possible values for the STEP_SEL field of the STEP_MODE register.
     # The numbers represent the fraction of step (ex.: 1/32 microstep).
     STEP_SEL_FULL = 0x00
@@ -118,7 +118,7 @@ class L6470(object):
     STEP_SEL_32 = 0x05
     STEP_SEL_64 = 0x06
     STEP_SEL_128 = 0x07
-    
+
     # ==============================================================================================
     # Alarm values
     # ==============================================================================================
@@ -143,7 +143,7 @@ class L6470(object):
         # Open the given SPI device
         self._SPI = spidev.SpiDev()
         self._SPI.open(Bus, Device)
-        
+
         # Configure SPI
         self._SPI.bits_per_word = 8
         self._SPI.max_speed_hz = 100000
@@ -180,26 +180,26 @@ class L6470(object):
         param2 = (param >> 16) & 0xFF
         param1 = (param >> 8) & 0xFF
         param0 = param & 0xFF
-        
+
         # Send bytes to the controller separately and build response value.
         # The bytes have to be sent separately since the Chip Select has to be reset
         # between every byte.
         request = [command]
         response = self._SPI.xfer2(request)
         responseValue = 0x000000
-        
+
         request = [param2]
         response = self._SPI.xfer2(request)
         responseValue = responseValue | (response[0] << 16)
-        
+
         request = [param1]
         response = self._SPI.xfer2(request)
         responseValue = responseValue | (response[0] << 8)
-        
+
         request = [param0]
         response = self._SPI.xfer2(request)
         responseValue = responseValue | response[0]
-        
+
         return responseValue
 
     # Convert an acceleration from step/tick^2 to step/s^2.
@@ -208,7 +208,7 @@ class L6470(object):
         # Equation: StepSec2 = (StepTick2 * 2^-40)/TICK^2
         # Equivalent to: StepTick2 / 0.068719
         StepSec2 = StepTick2 / self.STEP_ACC_RATIO
-        
+
         return StepSec2
 
     # Convert an acceleration from step/s^2 to step/tick^2.
@@ -217,7 +217,7 @@ class L6470(object):
         # Equation: StepTick2 = (StepSec2 * TICK^2)/2^-40
         # Equivalent to: StepTick2 * 0.068719
         StepTick2 = int(round(StepSec2 * self.STEP_ACC_RATIO))
-        
+
         # Limit speed to a 12 bits number
         return min(StepTick2, 0x00000FFF)
 
@@ -227,7 +227,7 @@ class L6470(object):
         # Equation: StepSec = (StepTick * 2^-28)/TICK
         # Equivalent to: StepTick / 67.108864
         StepSec = StepTick / self.STEP_SPEED_RATIO
-        
+
         return StepSec
 
     # Convert a speed from step/s to step/tick.
@@ -236,7 +236,7 @@ class L6470(object):
         # Equation: StepTick = (StepSec * TICK)/(2^-28)
         # Equivalent to: StepSec * 67.108864
         StepTick = int(round(StepSec * self.STEP_SPEED_RATIO))
-        
+
         # Limit speed to a 20 bits number
         return min(StepTick, 0x000FFFFF)
 
@@ -247,7 +247,7 @@ class L6470(object):
         # Equation: StepSec = (StepTick * 2^-18)/TICK
         # Equivalent to: StepTick / 0.065536
         StepSec = StepTick / self.MAXMIN_STEP_SPEED_RATIO
-        
+
         return StepSec
 
     # Convert a max or min speed from step/s to step/tick.
@@ -257,7 +257,7 @@ class L6470(object):
         # Equation: StepTick = (StepSec * TICK)/(2^-18)
         # Equivalent to: StepSec * 0.065536
         StepTick = StepSec * self.MAXMIN_STEP_SPEED_RATIO
-        
+
         # Limit speed to a 20 bits number
         return min(int(round(StepTick)), 0x000FFFFF)
 
@@ -307,7 +307,7 @@ class L6470(object):
 
         # Convert from step/s to step/tick
         SpeedTick = self.speedToStepTick(Speed)
-                
+
         self.sendCmd3(self.CMD_RUN | Direction, SpeedTick)
 
     # StepClock command
@@ -317,35 +317,35 @@ class L6470(object):
     def stepClock(self, Direction):
         if Direction != self.DIR_CLOCKWISE and Direction != self.DIR_COUNTER_CLOCKWISE:
             return
-                
+
         self.sendCmd(self.CMD_STEPCLOCK | Direction)
 
     # Move command
-    # Move the stepper by the given number of microsteps in agreement with the selected step mode 
+    # Move the stepper by the given number of microsteps in agreement with the selected step mode
     # (full, half, quarter, etc.).
     def move(self, Direction, Steps):
         if Direction != self.DIR_CLOCKWISE and Direction != self.DIR_COUNTER_CLOCKWISE:
             return
         if Steps <= 0:
             return
-                
+
         # Limit steps to a 22 bits number
         Steps = min(Steps, 0x003FFFFF)
-        
+
         self.sendCmd3(self.CMD_MOVE | Direction, int(Steps))
 
     # GoTo command
-    # Move the stepper to the given absolute position in agreement with the selected step mode 
+    # Move the stepper to the given absolute position in agreement with the selected step mode
     # (full, half, quarter, etc.).
     # This function uses the shortest path possible to get to that position.
     def goTo(self, Position):
         # Limit posiition to a 22 bits number
         Position = min(Position, 0x003FFFFF)
-        
+
         self.sendCmd3(self.CMD_GOTO, int(Position))
 
     # GoToDir command
-    # Same ad GoTo, but with a forced rotation direction, which depending on that direction might 
+    # Same ad GoTo, but with a forced rotation direction, which depending on that direction might
     # not result in the shortest path.
     def goToDir(self, Direction, Position):
         if Direction != self.DIR_CLOCKWISE or Direction != self.DIR_COUNTER_CLOCKWISE:
@@ -353,12 +353,12 @@ class L6470(object):
 
         # Limit posiition to a 22 bits number
         Position = min(Position, 0x003FFFFF)
-        
+
         self.sendCmd3(self.CMD_GOTODIR | Direction, int(Position))
 
     # GoUntil command
-    # Move the stepper at the given speed until a falling edge is detected on the SW pin of the 
-    # controller (external switch activated). The SW_MODE in the CONFIG register determines if a 
+    # Move the stepper at the given speed until a falling edge is detected on the SW pin of the
+    # controller (external switch activated). The SW_MODE in the CONFIG register determines if a
     # hard stop or a soft stop is performed.
     # The action determines whether the ABS_POS register is reset (L6470.ACT_RESET) or copied
     # (L6470.ACT_COPY) in the MARK register.
@@ -373,7 +373,7 @@ class L6470(object):
 
         # Convert from step/s to step/tick
         SpeedTick = self.speedToStepTick(Speed)
-                
+
         self.sendCmd3(self.CMD_GOUNTIL | Action | Direction, SpeedTick)
 
     # ReleaseSW command
@@ -387,7 +387,7 @@ class L6470(object):
             return
         if Direction != self.DIR_CLOCKWISE and Direction != self.DIR_COUNTER_CLOCKWISE:
             return
-                
+
         self.sendCmd(self.CMD_RELEASESW | Action | Direction)
 
     # GoHome command
@@ -437,7 +437,7 @@ class L6470(object):
     def status(self):
         # Obtain status.
         Status = self.sendCmd3(self.CMD_GETSTATUS, 0x000000)
-        
+
         # Keep only the two last bytes of response.
         return Status & 0x0000FFFF
 
@@ -450,11 +450,11 @@ class L6470(object):
     def currentPosition(self):
         # Obtain position, in two's complement form.
         Pos = self.getParam(self.REG_ABS_POS, 3)
-        
+
         # Convert to int value.
         if Pos & (1 << 21):  # If sign bit is set:
             Pos = Pos - (1 << 22)  # Compute negative value.
-                
+
         return Pos
 
     # MarkPosition command
@@ -463,11 +463,11 @@ class L6470(object):
     def markPosition(self):
         # Obtain position, in two's complement form.
         Mark = self.getParam(self.REG_MARK, 3)
-        
+
         # Convert to int value.
         if Mark & (1 << 21):  # If sign bit is set:
             Mark = Mark - (1 << 22)  # Compute negative value.
-                
+
         return Mark
 
     # CurrentSpeed command
@@ -475,7 +475,7 @@ class L6470(object):
     def currentSpeed(self):
         # Obtain value in SPEED register in step/tick and convert to step/s.
         Speed = self.speedToStepSec(self.getParam(self.REG_SPEED, 3))
-        
+
         return Speed
 
     # CurrentAcceleration command
@@ -484,7 +484,7 @@ class L6470(object):
     def currentAcceleration(self):
         # Obtain value in ACC register in step/tick^2 and convert to step/s^2.
         Acc = self.accToStepSec(self.getParam(self.REG_ACC, 2))
-        
+
         return Acc
 
     # CurrentDeceleration command
@@ -493,7 +493,7 @@ class L6470(object):
     def currentDeceleration(self):
         # Obtain value in DEC register in step/tick^2 and convert to step/s^2.
         Dec = self.accToStepSec(self.getParam(self.REG_DEC, 2))
-        
+
         return Dec
 
     # SetMinSpeed command
@@ -503,13 +503,13 @@ class L6470(object):
     def setMinSpeed(self, MinSpeed, Optimized):
         if MinSpeed < 0:
             return
-        
+
         MinSpeed = min(MinSpeed, 976)
-        
+
         # Add the low speed optimization bit if specified.
         if Optimized == True:
             MinSpeed += 0x1000
-        
+
         self.setParam(self.REG_MIN_SPEED, self.maxMinspeedToStepTick(MinSpeed), 2)
 
     # SetMaxSpeed command
@@ -517,19 +517,19 @@ class L6470(object):
     def setMaxSpeed(self, MaxSpeed):
         if MaxSpeed < 0:
             return
-        
+
         MaxSpeed = min(MaxSpeed, 15625)
-        
+
         self.setParam(self.REG_MAX_SPEED, self.maxMinspeedToStepTick(MaxSpeed), 2)
 
     # SetThresholdSpeed command
     # Set a new threshold speed for the stepper, in step/s.
-    # When the actual speed exceeds this value, the step mode is automatically switched to 
+    # When the actual speed exceeds this value, the step mode is automatically switched to
     # full-step two-phase on.
     def setThresholdSpeed(self, ThresholdSpeed):
         if ThresholdSpeed < 0:
             return
-        
+
         # Limit value to 10 bits.
         ThresholdSpeed = min(ThresholdSpeed, 15625)
 
@@ -539,34 +539,34 @@ class L6470(object):
     # SetKvals
     # Range is 0.996*12V=11.952V with a resolution of 0.004*12V=0.048V
     # Reg range is KVAL_HOLD, KVAL_RUN, KVAL_ACC, KVAL_DEC
-    # RegVal range is 0-255 
+    # RegVal range is 0-255
     def setKvalHold(self, RegVal):
         if RegVal > 0xFF:
-            RegVal = 0x0  
+            RegVal = 0x0
         self.setParam(self.REG_KVAL_HOLD, RegVal, 1)
 
     def setKvalRun(self, RegVal):
         if RegVal > 0xFF:
-            RegVal = 0x0  
+            RegVal = 0x0
         self.setParam(self.REG_KVAL_RUN, RegVal, 1)
 
     def setKvalAcc(self, RegVal):
         if RegVal > 0xFF:
-            RegVal = 0x0  
+            RegVal = 0x0
         self.setParam(self.REG_KVAL_ACC, RegVal, 1)
 
     def setKvalDec(self, RegVal):
         if RegVal > 0xFF:
-            RegVal = 0x0  
+            RegVal = 0x0
         self.setParam(self.REG_KVAL_DEC, RegVal, 1)
 
-     
+
     #The INT_SPEED register contains the speed value at which the BEMF compensation curve
     # changes slope. The available range is from 0 to 976.5 step/s with a resolution of 0.0596 step/s.
     # 14 bit register.
     def setIntersectSpeed(self, RegVal):
         if RegVal > 0x3FFF:
-            RegVal = 0x0 
+            RegVal = 0x0
         self.setParam(self.REG_INT_SPEED, RegVal, 2)
 
     #The ST_SLP register contains the BEMF compensation curve slope that is used when the
@@ -574,7 +574,7 @@ class L6470(object):
     #and the available range is from 0 to 0.004 with a resolution of 0.000015.
     def setStartSlope(self, RegVal):
         if RegVal > 0xFF:
-            RegVal = 0x0 
+            RegVal = 0x0
         self.setParam(self.REG_ST_SLP, RegVal, 1)
 
 
@@ -584,7 +584,7 @@ class L6470(object):
     #0.000015.
     def setAccFinalSlope(self, RegVal):
         if RegVal > 0xFF:
-            RegVal = 0x0 
+            RegVal = 0x0
         self.setParam(self.REG_FN_SLP_ACC, RegVal, 1)
 
 
@@ -594,7 +594,7 @@ class L6470(object):
     #0.000015.
     def setDecFinalSlope(self, RegVal):
         if RegVal > 0xFF:
-            RegVal = 0x0 
+            RegVal = 0x0
         self.setParam(self.REG_FN_SLP_DEC, RegVal, 1)
 
 
@@ -603,28 +603,28 @@ class L6470(object):
     #The available range is from 1 to 1.46875 with a resolution of 0.03125, as shown in Table 13.
     def setKThermComp(self, RegVal):
         if RegVal > 0xFF:
-            RegVal = 0x0 
+            RegVal = 0x0
         self.setParam(self.REG_K_THERM, RegVal, 1)
 
     #The ADC_OUT register contains the result of the analog-to-digital conversion of the ADCIN
     #pin voltage; the result is available even if the supply voltage compensation is disabled.
     def getADCOut(self, RegVal):
         if RegVal > 0xFF:
-            RegVal = 0x0 
+            RegVal = 0x0
         self.setParam(self.ADC_OUT, RegVal, 1)
 
     #The OCD_TH register contains the overcurrent threshold value (see Section 6.9 on page
     #29). The available range is from 375 mA to 6 A, in steps of 375 mA, as shown in Table 15.
     def setOCDThreshold(self, RegVal):
         if RegVal > 0xFF:
-            RegVal = 0x0 
+            RegVal = 0x0
         self.setParam(self.REG_OCD_TH, RegVal, 1)
 
     #The STALL_TH register contains the stall detection threshold value (see Section 7.2 on
     #page 35). The available range is from 31.25 mA to 4 A with a resolution of 31.25 mA.
     def setStallThreshold(self, RegVal):
         if RegVal > 0xFF:
-            RegVal = 0x0 
+            RegVal = 0x0
         self.setParam(self.REG_STALL_TH, RegVal, 1)
 
 
@@ -635,11 +635,11 @@ class L6470(object):
         # Default to full step if invalid step mode.
         if StepMode > self.STEP_MODE_STEP_SEL_MASK or StepMode < 0:
             StepMode = self.STEP_SEL_FULL
-                
+
         SyncEn = self.STEP_MODE_SYNC_EN_MASK & 0x00
         SyncSel = self.STEP_MODE_SYNC_SEL_MASK & self.SYNC_SEL_1  # Hardcoded to full FS.
         StepSel = self.STEP_MODE_STEP_SEL_MASK & StepMode
-                
+
         self.setParam(self.REG_STEP_MODE, SyncEn | SyncSel | StepSel, 1)
 
     # SetAlarms command
@@ -648,7 +648,7 @@ class L6470(object):
     def setAlarms(self, Alarms):
         # Limit alarms to 8 bits
         Alarms = min(Alarms, 0xFF)
-                
+
         self.setParam(self.REG_ALARM_EN, Alarms, 1)
 
     # SetConfig command
