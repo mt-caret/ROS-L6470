@@ -122,6 +122,10 @@ if __name__ == '__main__':
     rospy.init_node("stepper_controller_node", anonymous=True)
     rospy.Subscriber("motor/inter_eye/command", String, messageCallback)
 
-    rospy.spin()
+    def shutdown_callback():
+        _controller.softStop()
+        _controller.close()
 
-    _controller.close()
+    rospy.on_shutdown(shutdown_callback)
+
+    rospy.spin()
